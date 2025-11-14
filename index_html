@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>PlayZone</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+    body {
+      font-family: "Poppins", sans-serif;
+      background: radial-gradient(circle at top, #0f172a, #020617);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    .loader { font-size: 24px; font-weight: 600; animation: blink 1.4s infinite alternate; z-index: 1; }
+    @keyframes blink { from { opacity: .3; } to { opacity: 1; } }
+
+    /* Card (same look used for menu/game/matchmaking) */
+    .card {
+      display: none;
+      width: 92%;
+      max-width: 420px;
+      text-align: center;
+      padding: 22px;
+      border-radius: 18px;
+      background: rgba(30,41,59,0.95);
+      backdrop-filter: blur(6px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+      position: relative;
+      animation: fadeIn .35s ease;
+      z-index: 5;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+
+    .logo {
+      font-size: 28px; font-weight: 700;
+      background: linear-gradient(45deg,#ffb300,#ff6f00);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: 10px; letter-spacing: 1px;
+    }
+
+    .modebtn {
+      background: linear-gradient(45deg,#334155,#1e293b);
+      padding: 14px 18px; border-radius: 14px; margin: 10px 0; cursor: pointer;
+      font-weight:600; transition: .2s; border:1px solid #475569;
+    }
+    .modebtn:hover { background: linear-gradient(45deg,#ff6f00,#ffb300); color:#000; transform: scale(1.03); }
+
+    .backbtn {
+      position: absolute; top: 12px; left: 12px;
+      background: linear-gradient(45deg,#475569,#334155); color:#fff;
+      border:none; padding:6px 12px; border-radius:10px; cursor:pointer; font-weight:600;
+    }
+    .backbtn:hover { background: linear-gradient(45deg,#ff6f00,#ffb300); color:#000; }
+
+    .board { display:grid; grid-template-columns: repeat(3,1fr); gap:8px; margin-top:14px; justify-items:center; }
+    .cell {
+      width:88px; height:88px; background:#1e293b; border-radius:12px; display:flex; align-items:center;
+      justify-content:center; font-size:36px; font-weight:700; cursor:pointer; transition:.18s;
+      box-shadow: inset 0 0 8px rgba(255,255,255,0.03);
+    }
+    .cell:hover { transform: scale(1.04); background:#334155; }
+    .cell.win { background: linear-gradient(45deg,#ffb300,#ff6f00); color:#000; animation: pulse .6s infinite alternate; }
+    @keyframes pulse { from { transform: scale(1); box-shadow:0 0 8px #ffb300;} to { transform: scale(1.08); box-shadow:0 0 18px #ff6f00;} }
+
+    .status { margin-top: 10px; font-weight:600; font-size:15px; }
+    .scoreboard { margin-top:10px; font-size:14px; background:#0f172a; padding:6px 10px; border-radius:10px; display:inline-block; }
+
+    /* popup */
+    .popup-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter: blur(5px);
+      justify-content:center; align-items:center; z-index: 60; }
+    .popup { background:#1e293b; padding:22px; border-radius:14px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.5); }
+    .popup h2 { color:#ffb300; margin-bottom:10px; }
+    .popup button { margin:8px; padding:10px 16px; border-radius:10px; border:none; font-weight:600; cursor:pointer; }
+    .btn-again { background: linear-gradient(45deg,#ff6f00,#ffb300); color:#000; }
+    .btn-menu { background:#334155; color:#fff; }
+
+    /* Matchmaking overlay - styled like card so it looks identical */
+    #matchCard {
+      display:none;
+      width:92%; max-width:420px; padding:22px; border-radius:18px;
+      background: rgba(30,41,59,0.96); backdrop-filter: blur(6px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+      position: absolute; z-index: 80; text-align:center;
+    }
+    .match-title { font-size:20px; font-weight:700; color:#ffb300; margin-bottom:6px; }
+    .match-sub { font-size:14px; color:#cbd5e1; margin-bottom:14px; }
+    .match-loader {
+      width:68px; height:68px; margin: 6px auto 12px auto; border-radius:50%;
+      background: conic-gradient(#ffb300 0deg, #ff6f00 120deg, transparent 120deg);
+      filter: blur(6px); animation: rotate 1.8s linear infinite;
+    }
+    @keyframes rotate { to { transform: rotate(360deg); } }
+
+    .match-actions { display:flex; gap:12px; justify-content:center; margin-top:6px; }
+    .cancelBtn {
+      padding:10px 16px; background: linear-gradient(45deg,#374151,#111827);
+      color:#fff; border-radius:12px; border:1px solid #475569; cursor:pointer; font-weight:700;
+    }
+    .cancelBtn:hover { background: linear-gradient(45deg,#ff6f00,#ffb300); color:#000; transform:scale(1.02); }
+
+    /* small helper */
+    .small-muted { font-size:12px; color:#9ca3af; margin-top:6px; }
+
+    /* ensure everything sits above background */
+    .ui-wrap { position:relative; z-index:10; }
+  </style>
+</head>
+<body>
+  <div class="ui-wrap">
+    <div class="loader" id="loader">Loading PlayZone...</div>
+
+    <!-- MAIN MENU (card) -->
+    <div class="card mainMenu" id="mainMenu">
+      <div class="logo">PlayZone</div>
+      <p style="margin:6px 0 14px 0; color:#cbd5e1">Select Game Mode</p>
+      <div class="modebtn" id="offlineBtn">🎮 Offline Mode</div>
+      <div class="modebtn" id="botBtn">🤖 Play with Bot</div>
+      <div class="modebtn" id="onlineBtn">🌐 Play Online</div>
+      <div class="small-muted">Tip: Use Online to find real opponents (matchmaking).</div>
+    </div>
+
+    <!-- GAME SCREEN (card) -->
+    <div class="card" id="gameScreen">
+      <button class="backbtn" id="backBtn">← Back</button>
+      <div class="logo" style="font-size:22px">PlayZone</div>
+      <div class="status" id="status">Round 1: Player 1 (❌) turn</div>
+      <div class="board" id="board"></div>
+      <div style="margin-top:10px">
+        <div class="scoreboard" id="scoreboard">❌: 0 | ⭕: 0</div>
+      </div>
+    </div>
+
+    <!-- MATCHMAKING Card (same visual style) -->
+    <div id="matchCard" class="card" aria-hidden="true">
+      <div class="match-title">🌐 Finding Match...</div>
+      <div class="match-loader" id="matchLoader" aria-hidden="true"></div>
+      <div class="match-sub" id="matchSub">Searching for an opponent — waiting for join.</div>
+      <div class="match-actions">
+        <button class="cancelBtn" id="cancelMatch">Cancel</button>
+      </div>
+      <div class="small-muted">Matchmaking will continue until an opponent connects.</div>
+    </div>
+
+    <!-- RESULT POPUP -->
+    <div class="popup-overlay" id="popupOverlay">
+      <div class="popup">
+        <h2 id="popupTitle">🏆 Player 1 Wins the Match!</h2>
+        <div>
+          <button class="btn-again" id="againBtn">Play Again</button>
+          <button class="btn-menu" id="menuBtn">Main Menu</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SFX optional (kept same) -->
+  <audio id="clickSound" src="https://cdn.jsdelivr.net/gh/naptha/tictactoe-sfx/click.mp3"></audio>
+  <audio id="winSound" src="https://cdn.jsdelivr.net/gh/naptha/tictactoe-sfx/win.mp3"></audio>
+  <audio id="tieSound" src="https://cdn.jsdelivr.net/gh/naptha/tictactoe-sfx/tie.mp3"></audio>
+
+  <!-- FIREBASE + LOGIC -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getDatabase, ref, set, onValue, remove, get, child } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+    // --- Your Firebase config (use yours) ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyCe4O8XGAri5bbLV0j8NCFN6UqRq9W-fh0",
+      authDomain: "play-zone-3e22f.firebaseapp.com",
+      projectId: "play-zone-3e22f",
+      storageBucket: "play-zone-3e22f.firebasestorage.app",
+      messagingSenderId: "26800447077",
+      appId: "1:26800447077:web:8e5b22b291a3fa9527308c"
+    };
+    // -----------------------------------------
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // UI refs
+    const loader = document.getElementById('loader');
+    const mainMenu = document.getElementById('mainMenu');
+    const gameScreen = document.getElementById('gameScreen');
+    const matchCard = document.getElementById('matchCard');
+    const cancelMatch = document.getElementById('cancelMatch');
+    const board = document.getElementById('board');
+    const popupOverlay = document.getElementById('popupOverlay');
+    const popupTitle = document.getElementById('popupTitle');
+    const status = document.getElementById('status');
+    const scoreboard = document.getElementById('scoreboard');
+
+    const offlineBtn = document.getElementById('offlineBtn');
+    const botBtn = document.getElementById('botBtn');
+    const onlineBtn = document.getElementById('onlineBtn');
+    const backBtn = document.getElementById('backBtn');
+    const againBtn = document.getElementById('againBtn');
+    const menuBtn = document.getElementById('menuBtn');
+
+    // initial UI
+    setTimeout(()=>{ loader.style.display='none'; mainMenu.style.display='block'; }, 900);
+
+    // game state
+    let mode = 'offline';
+    let boardState = Array(9).fill(null);
+    let cells = [];
+    let current = 'X';
+    let score = { X:0, O:0 };
+    let round = 1, maxRounds = 3;
+
+    // matchmaking state
+    let playerId = Math.random().toString(36).slice(2,9);
+    let roomId = null;
+    let roomRef = null;
+    let pollInterval = null; // for polling rooms when creating
+    let listeningRef = null; // firebase onValue unsubscribe handled via onValue return not provided by SDK v11 but we won't rebind repeatedly
+
+    // helpers
+    offlineBtn.onclick = ()=>startGame('offline');
+    botBtn.onclick = ()=>startGame('bot');
+    onlineBtn.onclick = ()=>startOnlineMatchmaking();
+    backBtn.onclick = ()=>resetToMenu();
+    cancelMatch.onclick = ()=>cancelMatchmaking();
+    againBtn.onclick = ()=>{ popupOverlay.style.display='none'; startGame(mode); };
+    menuBtn.onclick = ()=>resetToMenu();
+
+    function startGame(type){
+      mode = type;
+      mainMenu.style.display='none';
+      matchCard.style.display='none';
+      popupOverlay.style.display='none';
+      gameScreen.style.display='block';
+      score = { X:0, O:0 };
+      round = 1;
+      renderBoard();
+      updateScoreboard();
+      updateActivePlayer();
+    }
+
+    function renderBoard(){
+      board.innerHTML='';
+      boardState = Array(9).fill(null);
+      cells = [];
+      current = 'X';
+      status.textContent = `Round ${round}: Player 1 (❌) turn`;
+      for(let i=0;i<9;i++){
+        const cell = document.createElement('div');
+        cell.className='cell';
+        cell.addEventListener('click', ()=> handleClick(i));
+        board.appendChild(cell);
+        cells[i]=cell;
+      }
+    }
+
+    function handleClick(i){
+      if(boardState[i] || popupOverlay.style.display==='flex') return;
+      // if online mode, only allow moves if it's your turn — for simplicity, we allow in offline/bot. Online will sync.
+      clickSound?.play?.();
+      boardState[i]=current;
+      cells[i].textContent=current;
+
+      // win check
+      const winLine = checkWin();
+      if(winLine){
+        winSound?.play?.();
+        score[current] = (score[current]||0)+1;
+        highlightWin(winLine);
+        updateScoreboard();
+        setTimeout(()=> nextRound(), 900);
+        return;
+      }
+
+      // tie
+      if(boardState.every(v=>v)){
+        tieSound?.play?.();
+        status.textContent = `🤝 Tie! Replay same round.`;
+        setTimeout(()=> renderBoard(), 1200);
+        return;
+      }
+
+      // swap turn
+      current = current==='X' ? 'O' : 'X';
+      updateActivePlayer();
+      status.textContent = `Player ${current==='X'?'1 (❌)':'2 (⭕)'} turn`;
+
+      if(mode === 'bot' && current === 'O'){
+        setTimeout(()=> botMove(), 600);
+      }
+
+      // if in online mode and we have a roomRef, update state in firebase
+      if(mode === 'online' && roomRef){
+        set(roomRef.child('state'), { board: boardState, turn: current });
+      }
+    }
+
+    function botMove(){
+      const empty = boardState.map((v,i)=> v? null: i).filter(v=>v!==null);
+      if(!empty.length) return;
+      const move = empty[Math.floor(Math.random()*empty.length)];
+      handleClick(move);
+    }
+
+    function checkWin(){
+      const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+      for(const [a,b,c] of wins){
+        if(boardState[a] && boardState[a]===boardState[b] && boardState[a]===boardState[c]) return [a,b,c];
+      }
+      return null;
+    }
+
+    function highlightWin(line){
+      line.forEach(i=> cells[i].classList.add('win'));
+    }
+
+    function nextRound(){
+      round++;
+      if(round > maxRounds){
+        let winner;
+        if(score.X > score.O) winner = "🏆 Player 1 Wins the Match!";
+        else if(score.O > score.X) winner = (mode === 'bot' ? "🤖 Bot Wins the Match!" : "🏆 Player 2 Wins the Match!");
+        else winner = "🤝 Match Tied!";
+        popupTitle.textContent = winner;
+        popupOverlay.style.display='flex';
+      } else {
+        renderBoard();
+      }
+    }
+
+    function updateScoreboard(){
+      scoreboard.textContent = `❌: ${score.X} | ⭕: ${score.O}`;
+    }
+
+    function updateActivePlayer(){
+      // visual only
+    }
+
+    function resetToMenu(){
+      // cleanup online if any
+      cancelMatchmaking();
+      popupOverlay.style.display='none';
+      gameScreen.style.display='none';
+      mainMenu.style.display='block';
+      score = { X:0, O:0 };
+      round = 1;
+      updateScoreboard();
+    }
+
+    /* ---------------------------
+       ONLINE MATCHMAKING LOGIC
+       - When user clicks Online:
+         * Show matchCard (same look)
+         * Try to find an open game in /rooms
+         * If found: join it (set player2) -> start game and listen to state
+         * If not found: create a room with waiting=true and poll for player2 join until cancel
+       --------------------------- */
+
+    // helper to get DB refs
+    function dbRef(path){ return ref(db, path); }
+
+    async function startOnlineMatchmaking(){
+      mode = 'online';
+      mainMenu.style.display='none';
+      matchCard.style.display='block';
+      gameScreen.style.display='none';
+      renderBoard(); // show empty board in memory
+      roomId = null;
+      roomRef = null;
+
+      // 1) try to find existing waiting room
+      try {
+        const roomsSnap = await get(dbRef('rooms'));
+        const roomsVal = roomsSnap.exists() ? roomsSnap.val() : null;
+        let foundId = null;
+        if(roomsVal){
+          for(const id of Object.keys(roomsVal)){
+            const r = roomsVal[id];
+            // only join rooms that have player1 and no player2 (waiting)
+            if(r.player1 && !r.player2){
+              foundId = id;
+              break;
+            }
+          }
+        }
+
+        if(foundId){
+          // join as player2
+          roomId = foundId;
+          roomRef = dbRef('rooms/' + roomId);
+          await set(dbRef('rooms/'+roomId+'/player2'), playerId);
+          // now listen for state changes and start game
+          listenRoom(roomRef);
+          // hide matchmaking only when state present (or immediately)
+          matchCard.style.display='none';
+          gameScreen.style.display='block';
+        } else {
+          // create a new room and wait
+          roomId = 'room_' + playerId;
+          roomRef = dbRef('rooms/' + roomId);
+          await set(roomRef, { player1: playerId, player2: null, state: { board: boardState, turn: current } });
+          // start polling the room to see if player2 joins (keeps matchmaking running until join/cancel)
+          pollInterval = setInterval(async ()=>{
+            const snap = await get(dbRef('rooms/' + roomId + '/player2'));
+            if(snap.exists() && snap.val()){
+              // opponent joined
+              clearInterval(pollInterval);
+              pollInterval = null;
+              matchCard.style.display='none';
+              gameScreen.style.display='block';
+              listenRoom(roomRef);
+            }
+          }, 900);
+        }
+      } catch(err){
+        console.error('matchmaking error', err);
+        matchCard.style.display='none';
+        mainMenu.style.display='block';
+      }
+    }
+
+    // listenRoom: subscribe to /rooms/<roomId>/state and update board when other moves
+    function listenRoom(roomReference){
+      // subscribe to full room; whenever state changes, update board
+      onValue(roomReference, (snap)=>{
+        const data = snap.val();
+        if(!data) return;
+        // if both players present -> hide matchmaking and start
+        if(data.player1 && data.player2){
+          matchCard.style.display='none';
+          gameScreen.style.display='block';
+        }
+        if(data.state && data.state.board){
+          boardState = data.state.board;
+          current = data.state.turn || current;
+          // ensure board DOM exists
+          if(cells.length !== 9) renderBoard();
+          for(let i=0;i<9;i++){
+            cells[i].textContent = boardState[i] || '';
+          }
+        }
+      });
+      // cleanup on leave
+      window.addEventListener('beforeunload', ()=>{
+        cancelMatchmaking(true);
+      });
+    }
+
+    async function cancelMatchmaking(onUnload=false){
+      // stop polling
+      if(pollInterval){ clearInterval(pollInterval); pollInterval = null; }
+      // remove created room if we created it and opponent didn't join
+      if(roomId){
+        try{
+          const snap = await get(dbRef('rooms/' + roomId));
+          if(snap.exists()){
+            const val = snap.val();
+            // if we are host (we created and still waiting) remove; if opponent already there, don't remove
+            if(val.player1 === playerId && !val.player2){
+              await remove(dbRef('rooms/' + roomId));
+            } else {
+              // if we are player2 or either, try to remove our id only (safer to avoid deleting other's room)
+              if(val.player2 === playerId){
+                await remove(dbRef('rooms/' + roomId));
+              }
+            }
+          }
+        }catch(e){ console.warn('error removing room', e); }
+      }
+      roomId = null;
+      roomRef = null;
+      if(!onUnload){
+        matchCard.style.display='none';
+        mainMenu.style.display='block';
+      }
+    }
+
+    // SAFE: ensure UI starts in menu if left in weird state
+    window.addEventListener('load', ()=> {
+      mainMenu.style.display = 'block';
+    });
+  </script>
+</body>
+</html>
