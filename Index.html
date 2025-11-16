@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>PlayZone</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+    /* Global/Base */
+    body {
+      font-family: "Poppins", sans-serif;
+      /* Background has more depth */
+      background: radial-gradient(circle at top, #0f172a 10%, #020617 90%);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    .loader { font-size: 24px; font-weight: 600; animation: blink 1.4s infinite alternate; z-index: 1; }
+    @keyframes blink { from { opacity: .3; } to { opacity: 1; } }
+
+    /* Card (Menu/Game/Matchmaking) - Added subtle glow and better background */
+    .card {
+      display: none;
+      width: 92%;
+      max-width: 420px;
+      text-align: center;
+      padding: 22px;
+      border-radius: 18px;
+      background: rgba(30,41,59,0.98); /* Less transparent */
+      backdrop-filter: blur(8px); /* Stronger blur */
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6), 0 0 25px rgba(255,179,0,0.1); /* Subtle Glow */
+      position: relative;
+      animation: fadeIn .35s ease;
+      z-index: 5;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+
+    .logo {
+      font-size: 28px; font-weight: 700;
+      background: linear-gradient(45deg,#ffb300,#ff6f00);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: 10px; letter-spacing: 1px;
+      text-shadow: 0 0 8px rgba(255,179,0,0.4); /* Logo Glow */
+    }
+
+    /* Mode/Settings Button - Added Hover Glow */
+    .modebtn {
+      background: linear-gradient(45deg,#334155,#1e293b);
+      padding: 14px 18px; border-radius: 14px; margin: 10px 0; cursor: pointer;
+      font-weight:600; transition: .3s ease-in-out; border:1px solid #475569;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    .modebtn:hover {
+      background: linear-gradient(45deg,#ff6f00,#ffb300);
+      color:#000;
+      transform: scale(1.04);
+      box-shadow: 0 0 20px rgba(255,179,0,0.6); /* Glow on Hover */
+    }
+
+    .backbtn, .settings-backbtn, .online-backbtn {
+      position: absolute; top: 12px; left: 12px;
+      background: linear-gradient(45deg,#475569,#334155); color:#fff;
+      border:none; padding:6px 12px; border-radius:10px; cursor:pointer; font-weight:600; transition:.3s;
+    }
+    .backbtn:hover, .settings-backbtn:hover, .online-backbtn:hover { background: linear-gradient(45deg,#ff6f00,#ffb300); color:#000; transform: scale(1.05); }
+
+    /* Game Board */
+    .board { display:grid; grid-template-columns: repeat(3,1fr); gap:12px; margin-top:18px; justify-items:center; }
+    .cell {
+      width:88px; height:88px; background:#1e293b; border-radius:12px; display:flex; align-items:center;
+      justify-content:center; font-size:40px; font-weight:700; cursor:pointer; transition:.2s ease;
+      box-shadow: inset 0 0 10px rgba(255,255,255,0.05);
+      border: 2px solid #334155;
+    }
+    .cell:hover { transform: scale(1.06); background:#334155; box-shadow: 0 0 15px rgba(255,255,255,0.1); }
+    .cell.win {
+      background: linear-gradient(45deg,#ffb300,#ff6f00);
+      color:#000;
+      animation: pulse 1s infinite alternate;
+      border: 3px solid #ffb300;
+    }
+    /* Enhanced Win Pulse Animation */
+    @keyframes pulse {
+      from { transform: scale(1); box-shadow:0 0 10px #ffb300;}
+      to { transform: scale(1.12); box-shadow:0 0 30px #ff6f00;}
+    }
+
+    .status { margin-top: 10px; font-weight:700; font-size:16px; color:#ffb300; text-shadow: 0 0 5px rgba(255,179,0,0.3); }
+    .scoreboard { margin-top:10px; font-size:15px; background:#0f172a; padding:8px 14px; border-radius:12px; display:inline-block; border: 1px solid #334155; }
+
+    /* Popup */
+    .popup-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); backdrop-filter: blur(6px);
+      justify-content:center; align-items:center; z-index: 60; }
+    .popup { background:#1e293b; padding:25px; border-radius:16px; text-align:center; box-shadow:0 15px 40px rgba(0,0,0,0.7), 0 0 30px rgba(255,179,0,0.15); }
+    .popup h2 { color:#ffb300; margin-bottom:12px; text-shadow: 0 0 8px rgba(255,179,0,0.5); }
+    .popup button { margin:8px; padding:12px 20px; border-radius:12px; border:none; font-weight:700; cursor:pointer; transition: .2s; }
+    .btn-again { background: linear-gradient(45deg,#ff6f00,#ffb300); color:#000; box-shadow: 0 4px 10px rgba(255,111,0,0.4); }
+    .btn-menu { background:#334155; color:#fff; }
+    .popup button:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.4); }
+
+    /* Matchmaking Card - Enhanced Glow and Animation */
+    #matchCard {
+      display:none;
+      width:92%; max-width:420px; padding:22px; border-radius:18px;
+      background: rgba(30,41,59,0.99);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 15px 50px rgba(0,0,0,0.8), 0 0 30px rgba(255,179,0,0.4); /* Stronger glow */
+      position: absolute; z-index: 80; text-align:center;
+      border: 2px solid #ffb300; /* Border to emphasize */
+    }
+    .match-title { font-size:24px; font-weight:800; color:#ffb300; margin-bottom:8px; text-shadow: 0 0 10px rgba(255,179,0,0.8); }
+    .match-sub { font-size:16px; color:#cbd5e1; margin-bottom:18px; }
+    /* Enhanced Match Loader - Clearer/Brighter */
+    .match-loader {
+      width:70px; height:70px; margin: 10px auto 16px auto; border-radius:50%;
+      background: conic-gradient(from 0deg, #ffb300 0deg, #ff6f00 90deg, #334155 90deg, #334155 180deg, #ffb300 180deg, #ff6f00 270deg, #334155 270deg, #334155 360deg);
+      box-shadow: 0 0 20px rgba(255,179,0,0.7);
+      animation: rotate 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite; 
+      border: 3px solid #ffb300;
+    }
+    @keyframes rotate { to { transform: rotate(360deg); } }
+
+    .match-actions { display:flex; gap:12px; justify-content:center; margin-top:10px; }
+    .cancelBtn {
+      padding:12px 20px; background: linear-gradient(45deg,#374151,#111827);
+      color:#fff; border-radius:12px; border:1px solid #475569; cursor:pointer; font-weight:700; transition:.2s;
+    }
+    .cancelBtn:hover { background: linear-gradient(45deg,#ff6f00,#ffb300); color:#000; transform:scale(1.05); box-shadow: 0 0 15px rgba(255,111,0,0.5); }
+
+    /* Settings Screen Styling */
+    #settingsScreen { z-index: 70; }
+    .setting-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px solid #334155;
+    }
+    .setting-item:last-child { border-bottom: none; }
+    .setting-label { font-size: 16px; font-weight: 600; }
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 28px;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: #334155;
+        transition: .4s;
+        border-radius: 28px;
+    }
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 20px;
+        width: 20px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+    input:checked + .slider {
+        background-color: #ffb300;
+        box-shadow: 0 0 8px #ffb300;
+    }
+    input:checked + .slider:before {
+        transform: translateX(22px);
+        background-color: #1e293b;
+    }
+    
+    /* Input field styling for custom rooms */
+    #roomCodeInput {
+        width: 80%;
+        padding: 10px;
+        margin: 10px auto;
+        border-radius: 8px;
+        border: 2px solid #334155;
+        background: #1e293b;
+        color: #fff;
+        font-size: 16px;
+        text-align: center;
+    }
+    #roomCodeInput::placeholder {
+        color: #94a3b8;
+    }
+    .copyBtn {
+        margin-top: 5px;
+        background: #ffb300;
+        color: #1e293b;
+        font-weight: 700;
+        padding: 8px 15px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+    .copyBtn:hover { background: #ff9f00; transform: scale(1.05); }
+
+    /* small helper */
+    .small-muted { font-size:12px; color:#9ca3af; margin-top:8px; }
+
+    /* ensure everything sits above background */
+    .ui-wrap { position:relative; z-index:10; }
+  </style>
+</head>
+<body>
+  <div class="ui-wrap">
+    <div class="loader" id="loader">Loading PlayZone...</div>
+
+    <div class="card mainMenu" id="mainMenu">
+      <div class="logo">PlayZone</div>
+      <p style="margin:6px 0 14px 0; color:#cbd5e1">Select Game Mode</p>
+      <div class="modebtn" id="offlineBtn">🎮 Offline Mode</div>
+      <div class="modebtn" id="botBtn">🤖 Play with Bot</div>
+      <div class="modebtn" id="onlineBtn">🌐 Play Online</div>
+      <div class="modebtn" id="settingsBtn">⚙️ Settings</div>
+      <div class="small-muted">Tip: Use Online to find real opponents (matchmaking).</div>
+    </div>
+    
+    <div class="card" id="onlineMenu">
+      <button class="online-backbtn" id="onlineBackBtn">← Back</button>
+      <div class="logo" style="font-size:22px; margin-top:20px;">🌐 Online Play</div>
+      <p style="margin:6px 0 14px 0; color:#cbd5e1">Choose a connection method</p>
+      
+      <div class="modebtn" id="autoMatchBtn">🔥 Auto Match (Quick Play)</div>
+      <div class="small-muted">Finds a random available opponent instantly.</div>
+
+      <hr style="border-color:#334155; margin: 15px 0;">
+
+      <p style="margin:6px 0 14px 0; color:#cbd5e1; font-weight:600;">Custom Room</p>
+      <div class="modebtn" id="createRoomBtn">➕ Create Private Room</div>
+      <div class="modebtn" id="joinRoomBtn">🔗 Join Room with Code</div>
+      <div class="small-muted">Play with friends using a private room code.</div>
+    </div>
+    
+    <div class="card" id="customRoomCard">
+        <button class="online-backbtn" id="customRoomBackBtn">← Back</button>
+        <div class="logo" style="font-size:22px; margin-top:20px;">Custom Room</div>
+        <p id="customRoomStatus" style="margin:6px 0 14px 0; color:#cbd5e1">Enter the 7-digit room code to join.</p>
+        
+        <input type="text" id="roomCodeInput" placeholder="Room Code (7 digits)" maxlength="7">
+        
+        <button class="modebtn" id="customRoomActionBtn" style="margin-top:15px; width: 100%;">Join Room</button>
+        <button class="copyBtn" id="copyRoomCodeBtn" style="display:none; width: 100%;">Copy Code</button>
+        <div class="small-muted" id="roomCodeTip">You will be Player 2 (⭕) if you join.</div>
+    </div>
+    
+    <div class="card" id="settingsScreen">
+      <button class="settings-backbtn" id="settingsBackBtn">← Back</button>
+      <div class="logo" style="font-size:22px; margin-top:20px;">Settings</div>
+
+      <div class="setting-item">
+        <span class="setting-label">Sound Effects</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="soundToggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="small-muted" style="margin-top:15px;">Your settings are saved locally.</div>
+    </div>
+
+    <div class="card" id="gameScreen">
+      <button class="backbtn" id="backBtn">← Back</button>
+      <div class="logo" style="font-size:22px; margin-top:20px;">PlayZone</div>
+      <div class="status" id="status">Round 1: Player 1 (❌) turn</div>
+      <div class="board" id="board"></div>
+      <div style="margin-top:10px">
+        <div class="scoreboard" id="scoreboard">❌: 0 | ⭕: 0</div>
+      </div>
+    </div>
+
+    <div id="matchCard" class="card" aria-hidden="true">
+      <div class="match-title">🌐 Finding Opponent...</div>
+      <div class="match-loader" id="matchLoader" aria-hidden="true"></div>
+      <div class="match-sub" id="matchSub">Searching for a suitable match. Please wait...</div>
+      <div class="match-actions">
+        <button class="cancelBtn" id="cancelMatch">Cancel Matchmaking</button>
+      </div>
+      <div class="small-muted">Matchmaking will automatically connect you to a live opponent.</div>
+    </div>
+
+    <div class="popup-overlay" id="popupOverlay">
+      <div class="popup">
+        <h2 id="popupTitle">🏆 Player 1 Wins the Match!</h2>
+        <div>
+          <button class="btn-again" id="againBtn">Play Again</button>
+          <button class="btn-menu" id="menuBtn">Main Menu</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <audio id="clickSound" src="https://cdn.jsdelivr.net/gh/naptha/tictactoe-sfx/click.mp3" preload="auto"></audio>
+  <audio id="winSound" src="https://cdn.jsdelivr.net/gh/naptha/tictactoe-sfx/win.mp3" preload="auto"></audio>
+  <audio id="tieSound" src="https://cdn.jsdelivr.net/gh/naptha/tictactoe-sfx/tie.mp3" preload="auto"></audio>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getDatabase, ref, set, onValue, remove, get, child, onDisconnect } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+    // --- Your Firebase config (using the second, complete config) ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyDVvBrLpwJ6agh7Y1fZbfMrhNDPOyAbLx0",
+      authDomain: "ox-games-d0ac4.firebaseapp.com",
+      databaseURL: "https://ox-games-d0ac4-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "ox-games-d0ac4",
+      storageBucket: "ox-games-d0ac4.firebasestorage.app",
+      messagingSenderId: "902162330174",
+      appId: "1:902162330174:web:eb6d756bbc5eb949f4976f",
+      measurementId: "G-EJGSTXCKM5"
+    };
+    // -----------------------------------------
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // UI refs
+    const loader = document.getElementById('loader');
+    const mainMenu = document.getElementById('mainMenu');
+    const gameScreen = document.getElementById('gameScreen');
+    const settingsScreen = document.getElementById('settingsScreen');
+    const matchCard = document.getElementById('matchCard');
+    const cancelMatch = document.getElementById('cancelMatch');
+    const board = document.getElementById('board');
+    const popupOverlay = document.getElementById('popupOverlay');
+    const popupTitle = document.getElementById('popupTitle');
+    const status = document.getElementById('status');
+    const scoreboard = document.getElementById('scoreboard');
+    // New Online Menu Refs
+    const onlineMenu = document.getElementById('onlineMenu');
+    const onlineBackBtn = document.getElementById('onlineBackBtn');
+    const autoMatchBtn = document.getElementById('autoMatchBtn');
+    const createRoomBtn = document.getElementById('createRoomBtn');
+    const joinRoomBtn = document.getElementById('joinRoomBtn');
+    // New Custom Room Refs
+    const customRoomCard = document.getElementById('customRoomCard');
+    const customRoomBackBtn = document.getElementById('customRoomBackBtn');
+    const roomCodeInput = document.getElementById('roomCodeInput');
+    const customRoomActionBtn = document.getElementById('customRoomActionBtn');
+    const customRoomStatus = document.getElementById('customRoomStatus');
+    const roomCodeTip = document.getElementById('roomCodeTip');
+    const copyRoomCodeBtn = document.getElementById('copyRoomCodeBtn');
+
+    const offlineBtn = document.getElementById('offlineBtn');
+    const botBtn = document.getElementById('botBtn');
+    const onlineBtn = document.getElementById('onlineBtn');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const backBtn = document.getElementById('backBtn');
+    const settingsBackBtn = document.getElementById('settingsBackBtn');
+    const againBtn = document.getElementById('againBtn');
+    const menuBtn = document.getElementById('menuBtn');
+    const soundToggle = document.getElementById('soundToggle');
+
+    // initial UI
+    setTimeout(()=>{ loader.style.display='none'; mainMenu.style.display='block'; }, 900);
+
+    // game state
+    let mode = 'offline';
+    let boardState = Array(9).fill(null);
+    let cells = [];
+    let current = 'X';
+    let score = { X:0, O:0 };
+    let round = 1, maxRounds = 3;
+    let isGameActive = false; 
+    let unsubscribeRoomListener = null; 
+
+    // matchmaking state
+    let playerId = Math.random().toString(36).slice(2,9);
+    let roomId = null;
+    let roomRef = null;
+    let pollInterval = null;
+    let myMarker = 'X'; 
+    let opponentId = null; 
+    let isCreatingRoom = false; // Flag to know if we are in create mode or join mode
+
+    // Sound FX functions
+    function getSoundSetting() {
+        return localStorage.getItem('playzone_sound') !== 'off';
+    }
+
+    function playSound(id) {
+        if (!getSoundSetting()) return;
+        const audio = document.getElementById(id);
+        if (audio) {
+            audio.currentTime = 0; 
+            audio.play().catch(e => console.log('Sound play blocked:', e));
+        }
+    }
+
+    // Initialize sound setting
+    if(localStorage.getItem('playzone_sound') === null) {
+        localStorage.setItem('playzone_sound', 'on');
+    }
+    soundToggle.checked = getSoundSetting();
+
+    // Event listeners
+    offlineBtn.onclick = ()=>startGame('offline');
+    botBtn.onclick = ()=>startGame('bot');
+    
+    // NEW ONLINE MENU FLOW
+    onlineBtn.onclick = ()=>showOnlineMenu();
+    onlineBackBtn.onclick = ()=>showMenuFromOnline();
+    autoMatchBtn.onclick = ()=>startOnlineMatchmaking('auto');
+    createRoomBtn.onclick = ()=>showCustomRoomScreen('create');
+    joinRoomBtn.onclick = ()=>showCustomRoomScreen('join');
+    customRoomBackBtn.onclick = ()=>showOnlineMenu();
+    customRoomActionBtn.onclick = ()=>handleCustomRoomAction();
+    copyRoomCodeBtn.onclick = ()=>copyRoomCode();
+
+
+    settingsBtn.onclick = ()=>showSettings();
+    backBtn.onclick = ()=>resetToMenu();
+    settingsBackBtn.onclick = ()=>showMenuFromSettings();
+    cancelMatch.onclick = ()=>cancelMatchmaking();
+    againBtn.onclick = ()=>{ 
+        popupOverlay.style.display='none'; 
+        if(mode === 'online') {
+            score = { X:0, O:0 }; round = 1; updateScoreboard(); 
+            nextRound(true); 
+        } else {
+            startGame(mode); 
+        }
+    };
+    menuBtn.onclick = ()=>resetToMenu();
+    soundToggle.onchange = (e) => {
+        localStorage.setItem('playzone_sound', e.target.checked ? 'on' : 'off');
+    };
+    
+    // UI Helpers
+    function showOnlineMenu() {
+        mainMenu.style.display = 'none';
+        onlineMenu.style.display = 'block';
+    }
+    
+    function showMenuFromOnline() {
+        onlineMenu.style.display = 'none';
+        mainMenu.style.display = 'block';
+    }
+
+    function showSettings() {
+        mainMenu.style.display = 'none';
+        settingsScreen.style.display = 'block';
+    }
+
+    function showMenuFromSettings() {
+        settingsScreen.style.display = 'none';
+        mainMenu.style.display = 'block';
+    }
+    
+    function showCustomRoomScreen(type) {
+        onlineMenu.style.display = 'none';
+        customRoomCard.style.display = 'block';
+        roomCodeInput.value = '';
+        copyRoomCodeBtn.style.display = 'none';
+        roomCodeInput.readOnly = false;
+        isCreatingRoom = (type === 'create');
+        
+        if (isCreatingRoom) {
+            customRoomStatus.textContent = "Your room code will appear below. Share it with your friend.";
+            customRoomActionBtn.textContent = "Create Room";
+            roomCodeInput.placeholder = "Generating Code...";
+            roomCodeTip.textContent = "You will be Player 1 (❌).";
+            roomCodeInput.style.display = 'none'; // Hide input until needed
+            customRoomActionBtn.onclick = ()=>startOnlineMatchmaking('custom');
+        } else {
+            customRoomStatus.textContent = "Enter the 7-digit room code to join.";
